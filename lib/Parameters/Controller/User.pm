@@ -44,6 +44,10 @@ sub get_by_parameter {
         # $output will be validated by the OpenAPI spec before rendered
         my $output = { user => $user };
         $c->render(openapi => $output);
+    } else {
+        $c->respond_to(
+            any => { status => 404, json => { message => 'Not found' }}
+        );
     }
 }
 
