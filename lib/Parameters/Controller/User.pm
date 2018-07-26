@@ -18,7 +18,6 @@ sub list {
         my $user = $users{$user_id};
         $user->{userid} = $user_id;
         push @user_list, $user;
-
     }
 
     # $output will be validated by the OpenAPI spec before rendered
