@@ -1,0 +1,82 @@
+{
+    "swagger": "2.0",
+    "info": { "version": "1.0", "title": "Demo of API with parameters" },
+    "basePath": "/api",
+    "paths": {
+      "/users": {
+        "get": {
+          "operationId": "getUsers",
+          "x-mojo-name": "get_users",
+          "x-mojo-to": "user#list",
+          "summary": "Lists users",
+          "responses": {
+            "200": {
+              "description": "Users response",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "users": {
+                    "type": "array",
+                    "items": { "type": "object" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/user/#id": {
+        "get": {
+          "operationId": "getUserByUrl",
+          "x-mojo-name": "get_user_by_url",
+          "x-mojo-to": "user#get_by_url",
+          "summary": "User response",
+          "responses": {
+            "200": {
+              "description": "User response",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "default": {
+              "description": "Unexpected error",
+              "schema": {}
+            }
+          }
+        }
+      },
+      "/user": {
+            "get": {
+              "operationId": "getUserByParameter",
+              "x-mojo-name": "get_user_by_parameter",
+              "x-mojo-to": "user#get_by_parameter",
+              "summary": "User response",
+              "parameters": [
+                {"in": "query", "name": "id", "type": "string"}
+              ],
+              "responses": {
+                "200": {
+                  "description": "User response",
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "user": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                },
+                "default": {
+                  "description": "Unexpected error",
+                  "schema": {}
+                }
+              }
+            }
+      }
+    }
+  }
