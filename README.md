@@ -308,7 +308,7 @@ Yay! our **Mojolicious** **OpenAPI** implementation works and we can even suppor
 
 Since we take parameters, we need to do one last thing. And that is sanitizing our input. This part is not essential for get going with **Mojolicious** **OpenAPI** integration and **Mojolicious::Plugin::OpenAPI**.
 
-This next part is not required, but if you want to follow read along please do.
+This next part is not required for understanding handling parameters, but if you want get into validation, which is quite essential please read along.
 
 Lets add validation to our two end-points processing data. The Mojolicious::Plugin::OpenAPI already has a hook for validation, but we need to extend this.
 
