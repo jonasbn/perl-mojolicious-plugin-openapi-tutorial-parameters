@@ -1,0 +1,5 @@
+*.pm linguist-language=Perl
+*.t linguist-language=Perl
+*.ep linguist-language=Perl
+parameters linguist-language=Perl
+*.conf linguist-language=Perl
