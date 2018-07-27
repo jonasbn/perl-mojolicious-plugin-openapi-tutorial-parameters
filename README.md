@@ -148,7 +148,7 @@ We have defined the following paths:
 
 Create a new file: `User.pm` in `lib/Parameters/Controller/`
 
-First we add the method for handling `/api/users`
+First we add the method for handling `/api/users`:
 
 ```perl
 package Parameters::Controller::User;
@@ -179,40 +179,36 @@ sub list {
 }
 ```
 
-Now start the application
+We are simulating a model in our application, so the data are just placed in a internal data structure named: `%users`, this could of course be any sort of model, a database, filesystem or another service.
+
+Now start the application:
 
 ```bash
 $ morbo script/parameters
 ```
 
-And finally - lets call the API
+And finally - lets call the API, do note you do not need `jq` and your could use `curl` or `httpie`, so this is just for sticking to the already available tools, `jq` being the exception.
 
 ```bash
-$ http http://localhost:3000/api/users
+$ mojo get http://localhost:3000/api/users | jq
 ```
 
-We should now get the result
+A we get a complete list of our users, currently consisting of Bob and Alice:
 
 ```json
-HTTP/1.1 200 OK
-Content-Length: 129
-Content-Type: application/json;charset=UTF-8
-Date: Thu, 26 Jul 2018 18:25:34 GMT
-Server: Mojolicious (Perl)
-
 {
-    "users": [
-        {
-            "email": "alice@eksempel.dk",
-            "name": "Alice",
-            "userid": "alice"
-        },
-        {
-            "email": "bob@eksempel.dk",
-            "name": "Bob",
-            "userid": "bob"
-        }
-    ]
+  "users": [
+    {
+      "email": "bob@eksempel.dk",
+      "name": "Bob",
+      "userid": "bob"
+    },
+    {
+      "email": "alice@eksempel.dk",
+      "name": "Alice",
+      "userid": "alice"
+    }
+  ]
 }
 ```
 
@@ -246,27 +242,21 @@ sub get_by_parameter {
 }
 ```
 
-Now lets call the API
+Now lets call the API:
 
 ```bash
-$ http http://localhost:3000/api/user?id=alice
+$ mojo get http://localhost:3000/api/user?id=alice | jq
 ```
 
-And the response should resemble:
+And the result for Alice:
 
 ```json
-HTTP/1.1 200 OK
-Content-Length: 70
-Content-Type: application/json;charset=UTF-8
-Date: Thu, 26 Jul 2018 18:30:50 GMT
-Server: Mojolicious (Perl)
-
 {
-    "user": {
-        "email": "alice@eksempel.dk",
-        "name": "Alice",
-        "userid": "alice"
-    }
+  "user": {
+    "email": "alice@eksempel.dk",
+    "name": "Alice",
+    "userid": "alice"
+  }
 }
 ```
 
@@ -296,31 +286,218 @@ sub get_by_url {
 }
 ```
 
-Lets call the API
+Lets call the API again using the URL:
 
 ```bash
-$ http http://localhost:3000/api/user/bob
+$ mojo get http://localhost:3000/api/user/bob | jq
 ```
 
-```json
-HTTP/1.1 200 OK
-Content-Length: 64
-Content-Type: application/json;charset=UTF-8
-Date: Thu, 26 Jul 2018 18:31:45 GMT
-Server: Mojolicious (Perl)
+And we get the result for Bob:
 
+```json
 {
-    "user": {
-        "email": "bob@eksempel.dk",
-        "name": "Bob",
-        "userid": "bob"
-    }
+  "user": {
+    "email": "bob@eksempel.dk",
+    "name": "Bob",
+    "userid": "bob"
+  }
 }
 ```
 
 Yay! our **Mojolicious** **OpenAPI** implementation works and we can even support different URL schemas.
 
-That is it for now, good luck with experimenting with **Mojolicious** **OpenAPI** integration and **OpenAPI**. Thanks to Jan Henning Thorsen ([@jhthorsen](https://twitter.com/jhthorsen)) for the implementation of Mojolicious::Plugin::OpenAPI.
+Since we take parameters, we need to do one last thing. And that is sanitizing our input. This part is not essential for get going with **Mojolicious** **OpenAPI** integration and **Mojolicious::Plugin::OpenAPI**.
+
+This next part is not required, but if you want to follow read along please do.
+
+Lets add validation to our two end-points processing data. The Mojolicious::Plugin::OpenAPI already has a hook for validation, but we need to extend this.
+
+Lets add a method to our `Parameters::Controller::User`. Our `id` no matter how we receive it has to adhere to the same validation so we add this basic validation method, which overwrites the existing validation for our controller.
+
+```perl
+sub _validate_id {
+    my ($c, $id) = @_;
+
+    my $validator = $c->validation->validator;
+    my $validation = $validator->validation;
+    $validation->input({id => $id});
+    $validation->required('id')->like(qr/^[A-Z]/i);
+    $c->validation->validator($validation);
+
+    return $c;
+}
+```
+
+As you can see our two end-points fetching users are pretty similar, the only difference is how the `id` parameter is received, so lets generalise this with the following method:
+
+```perl
+sub _proces_request {
+    my ($c, $id) = @_;
+
+    $c->_validate_id($id);
+
+    if (not $c->validation->validator->has_error) {
+
+        my $input = $c->validation->validator->output;
+
+        my $id = $input->{'id'};
+        my $user = $users{$id};
+
+        if ($user) {
+            $user->{userid} = $id;
+            # $output will be validated by the OpenAPI spec before rendered
+            my $output = { user => $user };
+            $c->render(openapi => $output);
+        } else {
+            $c->respond_to(
+                any => { status => 404, json => { message => 'Not found' }}
+            );
+        }
+    } else {
+        $c->respond_to(
+            any => { status => 400, json => { message => 'Bad request' }}
+        );
+    }
+
+    return $c;
+}
+```
+
+We let this method call our validation method, so all we need to do is let the two end-points extract the `id` parameter and call the `_proces_request` method:
+
+First: `get_by_parameter`:
+
+```perl
+sub get_by_parameter {
+
+    # Do not continue on invalid input and render a default 400
+    # error document.
+    my $c = shift->openapi->valid_input or return;
+
+    # $c->openapi->valid_input copies valid data to validation object,
+    # and the normal Mojolicious api works as well.
+
+    $c->_proces_request($c->param('id'));
+}
+```
+
+Secondly: `get_by_parameter`:
+
+```perl
+sub get_by_url {
+
+    # Do not continue on invalid input and render a default 400
+    # error document.
+    my $c = shift->openapi->valid_input or return;
+
+    # $c->openapi->valid_input copies valid data to validation object,
+    # and the normal Mojolicious api works as well.
+
+    $c->_proces_request($c->stash('id'));
+}
+```
+
+And we should be good to go. The complete controller component should look like the following:
+
+```perl
+package Parameters::Controller::User;
+use Mojo::Base 'Mojolicious::Controller';
+
+my %users = (
+    'bob'  => { name => 'Bob', email => 'bob@eksempel.dk' },
+    'alice'=> { name => 'Alice', email => 'alice@eksempel.dk' },
+);
+
+sub list {
+
+    # Do not continue on invalid input and render a default 400
+    # error document.
+    my $c = shift->openapi->valid_input or return;
+
+    my @user_list = ();
+
+    foreach my $user_id (keys %users) {
+        my $user = $users{$user_id};
+        $user->{userid} = $user_id;
+        push @user_list, $user;
+    }
+
+    # $output will be validated by the OpenAPI spec before rendered
+    my $output = { users => \@user_list };
+    $c->render(openapi => $output);
+}
+
+sub get_by_parameter {
+
+    # Do not continue on invalid input and render a default 400
+    # error document.
+    my $c = shift->openapi->valid_input or return;
+
+    # $c->openapi->valid_input copies valid data to validation object,
+    # and the normal Mojolicious api works as well.
+
+    $c->_proces_request($c->param('id'));
+}
+
+sub get_by_url {
+
+    # Do not continue on invalid input and render a default 400
+    # error document.
+    my $c = shift->openapi->valid_input or return;
+
+    # $c->openapi->valid_input copies valid data to validation object,
+    # and the normal Mojolicious api works as well.
+
+    $c->_proces_request($c->stash('id'));
+}
+
+sub _proces_request {
+    my ($c, $id) = @_;
+
+    $c->_validate_id($id);
+
+    if (not $c->validation->validator->has_error) {
+
+        my $input = $c->validation->validator->output;
+
+        my $id = $input->{'id'};
+        my $user = $users{$id};
+
+        if ($user) {
+            $user->{userid} = $id;
+            # $output will be validated by the OpenAPI spec before rendered
+            my $output = { user => $user };
+            $c->render(openapi => $output);
+        } else {
+            $c->respond_to(
+                any => { status => 404, json => { message => 'Not found' }}
+            );
+        }
+    } else {
+        $c->respond_to(
+            any => { status => 400, json => { message => 'Bad request' }}
+        );
+    }
+
+    return $c;
+}
+
+sub _validate_id {
+    my ($c, $id) = @_;
+
+    my $validator = $c->validation->validator;
+    my $validation = $validator->validation;
+    $validation->input({id => $id});
+    $validation->required('id')->like(qr/^[A-Z]/i);
+    $c->validation->validator($validation);
+
+    return $c;
+}
+
+1;
+```
+
+That concludes this part. Have fun experimenting with **Mojolicious::Plugin::OpenAPI**.
 
 ## References
 
@@ -328,3 +505,5 @@ That is it for now, good luck with experimenting with **Mojolicious** **OpenAPI*
 - [MetaCPAN: Mojolicious::Plugin::OpenAPI Tutorial](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI::Guides::Tutorial)
 - [OpenAPI Website](https://www.openapis.org/)
 - [GitHub repository for tutorial](https://github.com/jonasbn/perl-mojolicious-plugin-openapi-tutorial-hello-world)
+- [Mojolicious.org: Mojolicious::Validator](https://mojolicious.org/perldoc/Mojolicious/Validator)
+- [Mojolicious.org: Mojolicious::Validator::Validation](https://mojolicious.org/perldoc/Mojolicious/Validator/Validation)

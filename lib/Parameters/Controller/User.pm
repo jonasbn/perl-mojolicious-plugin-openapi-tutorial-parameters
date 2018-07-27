@@ -33,22 +33,8 @@ sub get_by_parameter {
 
     # $c->openapi->valid_input copies valid data to validation object,
     # and the normal Mojolicious api works as well.
-    my $input = $c->validation->output;
 
-    my $id = $input->{'id'};
-
-    my $user = $users{$id};
-
-    if ($user) {
-        $user->{userid} = $id;
-        # $output will be validated by the OpenAPI spec before rendered
-        my $output = { user => $user };
-        $c->render(openapi => $output);
-    } else {
-        $c->respond_to(
-            any => { status => 404, json => { message => 'Not found' }}
-        );
-    }
+    $c->_proces_request($c->param('id'));
 }
 
 sub get_by_url {
@@ -57,21 +43,53 @@ sub get_by_url {
     # error document.
     my $c = shift->openapi->valid_input or return;
 
-    my $id = $c->stash('id');
+    # $c->openapi->valid_input copies valid data to validation object,
+    # and the normal Mojolicious api works as well.
 
-    my $user = $users{$id};
-
-    if ($user) {
-        $user->{userid} = $id;
-        # $output will be validated by the OpenAPI spec before rendered
-        my $output = { user => $user };
-        $c->render(openapi => $output);
-    } else {
-        $c->respond_to(
-            any => { status => 404, json => { message => 'Not found' }}
-        );
-    }
+    $c->_proces_request($c->stash('id'));
 }
 
+sub _proces_request {
+    my ($c, $id) = @_;
+
+    $c->_validate_id($id);
+
+    if (not $c->validation->validator->has_error) {
+
+        my $input = $c->validation->validator->output;
+
+        my $id = $input->{'id'};
+        my $user = $users{$id};
+
+        if ($user) {
+            $user->{userid} = $id;
+            # $output will be validated by the OpenAPI spec before rendered
+            my $output = { user => $user };
+            $c->render(openapi => $output);
+        } else {
+            $c->respond_to(
+                any => { status => 404, json => { message => 'Not found' }}
+            );
+        }
+    } else {
+        $c->respond_to(
+            any => { status => 400, json => { message => 'Bad request' }}
+        );
+    }
+
+    return $c;
+}
+
+sub _validate_id {
+    my ($c, $id) = @_;
+
+    my $validator = $c->validation->validator;
+    my $validation = $validator->validation;
+    $validation->input({id => $id});
+    $validation->required('id')->like(qr/^[A-Z]/i);
+    $c->validation->validator($validation);
+
+    return $c;
+}
 
 1;

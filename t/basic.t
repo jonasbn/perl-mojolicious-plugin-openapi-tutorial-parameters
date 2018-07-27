@@ -32,4 +32,23 @@ $t->get_ok('/api/user/alice')
   ->json_is('/user/userid', 'alice')
   ->json_is('/user/name', 'Alice');
 
+$t->get_ok('/api/user?id=zed')
+  ->status_is(404);
+
+$t->get_ok('/api/user/zed')
+  ->status_is(404);
+
+$t->get_ok('/api/user/12')
+  ->status_is(400);
+
+$t->get_ok('/api/user?id=12')
+  ->status_is(400);
+
+$t->get_ok('/api/user')
+  ->status_is(400);
+
+$t->get_ok('/api/user?id=')
+  ->status_is(400);
+
+
 done_testing();
