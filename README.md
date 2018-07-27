@@ -547,6 +547,6 @@ That concludes this part. Have fun experimenting with **Mojolicious::Plugin::Ope
 - [MetaCPAN: Mojolicious::Plugin::OpenAPI](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI)
 - [MetaCPAN: Mojolicious::Plugin::OpenAPI Tutorial](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI::Guides::Tutorial)
 - [OpenAPI Website](https://www.openapis.org/)
-- [GitHub repository for tutorial](https://github.com/jonasbn/perl-mojolicious-plugin-openapi-tutorial-hello-world)
+- [GitHub repository for tutorial](https://github.com/jonasbn/perl-mojolicious-plugin-openapi-tutorial-parameters)
 - [Mojolicious.org: Mojolicious::Validator](https://mojolicious.org/perldoc/Mojolicious/Validator)
 - [Mojolicious.org: Mojolicious::Validator::Validation](https://mojolicious.org/perldoc/Mojolicious/Validator/Validation)
