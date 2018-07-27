@@ -497,6 +497,49 @@ sub _validate_id {
 1;
 ```
 
+To checkout our new validations try different variations. As we implemented we only allow lettes for user-id and hence we regard the request as a _bad request_
+
+
+```bash
+$ mojo get --verbose http://localhost:3000/api/user/123 | jq
+GET /api/user/123 HTTP/1.1
+Host: localhost:3000
+Accept-Encoding: gzip
+User-Agent: Mojolicious (Perl)
+Content-Length: 0
+
+HTTP/1.1 400 Bad Request
+Date: Fri, 27 Jul 2018 08:25:40 GMT
+Content-Type: application/json;charset=UTF-8
+Server: Mojolicious (Perl)
+Content-Length: 25
+
+{
+  "message": "Bad request"
+}
+```
+
+And of the other end-point also a _bad request_:
+
+```bash
+$ mojo get --verbose http://localhost:3000/api/user?id=123 | jq
+GET /api/user?id=123 HTTP/1.1
+Host: localhost:3000
+User-Agent: Mojolicious (Perl)
+Accept-Encoding: gzip
+Content-Length: 0
+
+HTTP/1.1 400 Bad Request
+Date: Fri, 27 Jul 2018 08:27:24 GMT
+Server: Mojolicious (Perl)
+Content-Type: application/json;charset=UTF-8
+Content-Length: 25
+
+{
+  "message": "Bad request"
+}
+```
+
 That concludes this part. Have fun experimenting with **Mojolicious::Plugin::OpenAPI**.
 
 ## References
