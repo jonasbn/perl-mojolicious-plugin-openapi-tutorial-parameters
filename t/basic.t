@@ -8,15 +8,14 @@ $t->get_ok('/')->status_is(200)->content_like(qr/Mojolicious/i);
 
 $t->get_ok('/api')
   ->status_is(200)
-  ->json_has('users')
-  ->json_has('user')
-  ->json_has('200');
+  ->json_is('/basePath', '/api')
+  ->json_is('/paths/~1user/get/operationId', 'getUserByParameter');
 
 $t->get_ok('/api/users')
   ->status_is(200)
   ->json_has('/users')
-  ->json_has('bob')
-  ->json_has('alice');
+  ->json_is('/users/0/userid','bob')
+  ->json_is('/users/1/userid', 'alice');
 
 $t->get_ok('/api/user?id=bob')
   ->status_is(200)
@@ -49,6 +48,5 @@ $t->get_ok('/api/user')
 
 $t->get_ok('/api/user?id=')
   ->status_is(400);
-
 
 done_testing();
